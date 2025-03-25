@@ -1,0 +1,65 @@
+@page "/list-of-orders-user"
+
+
+<h3>Vaše objednávky</h3>
+
+@if (orders == null)
+{
+    <p>Načítám objednávky...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Datum vytvoření</th>
+                <th>Celková cena</th>
+                <th>Stav</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var order in orders)
+            {
+                <tr>
+                    <td>@order.Id</td>
+                    <td>@order.CreatedAt.ToLocalTime()</td>
+                    <td>@order.TotalPrice</td>
+                    <td>@order.StatusName</td>
+                    <td>
+                        <button class="btn btn-secondary" @onclick="() => NavigateToDetail(order.Id)">Detail</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<button class="btn btn-primary" @onclick="ReturnToHomepage">Zpět na hlavní stránku</button>
+
+@code {
+    private List<Order> orders = new List<Order>();
+    private int UserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
+        }
+
+        orders = await OrderClient.GetOrdersByUserIdAsync(UserId);
+    }
+
+    private void ReturnToHomepage()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+    private void NavigateToDetail(int OrderId)
+    {
+        NavigationManager.NavigateTo($"/order-detail/{OrderId}/list-of-orders-user");
+    }
+}

@@ -1,0 +1,174 @@
+﻿@inject NavigationService NavigationService
+@inject CartService CartService
+
+<!-- Pevný horní pruh (navbar) -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container-fluid d-flex justify-content-between align-items-center px-0">
+        <!-- Logo a název obchodu (levá část) -->
+        <div class="d-flex align-items-center">
+            <img src="logo2.png" style="width: 100px; height: 100px; " alt="Logo" class="logo-img" @onclick="() => NavigationService.NavigateToHome()" />
+            <span class="ms-2 fw-bold fs-5 eshop-tittle" @onclick="() => NavigationService.NavigateToHome()">Steezy Sneakers</span>
+        </div>
+
+        <!-- Uživatelská část / tlačítka (pravá část) -->
+        <div class="d-flex align-items-center">
+            <span class="me-3">Přihlášen jako: @userName</span>
+
+            @if (isAdmin)
+            {
+                <button @onclick="NavigateToAdminPanel" class="btn btn-primary ms-2">Admin Panel</button>
+            }
+
+
+            <!-- Košík -->
+            <button
+                class="@(CartService.CartItemsCount > 0 ? "btn btn-warning position-relative ms-2" : "btn btn-light position-relative ms-2")"
+                title="Košík" @onclick="NavigateToCart">
+                <i class="bi bi-cart"></i>
+                @if (CartService.CartItemsCount > 0)
+                {
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        @CartService.CartItemsCount
+                    </span>
+                }
+            </button>
+
+            @if (isUserLoggedIn)
+            {
+                <button class="btn btn-danger ms-2" @onclick="() => ShowDisconnectInformation()">Odhlásit</button>
+                <button @onclick="NavigateToMyOrders" class="btn btn-secondary ms-2">Moje Objednávky</button>
+                <button @onclick="NavigateToEditUserData" class="btn btn-secondary ms-2 me-2">Upravit údaje</button>
+            }
+            else
+            {
+                <button @onclick="NavigateToLogin" class="btn btn-primary ms-2">Přihlásit</button>
+            }
+        </div>
+    </div>
+</nav>
+
+<!-- Modal pro potvrzení odhlášení -->
+<div class="modal fade @(showModal ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);"
+    role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Potvrzení odhlášení</h5>
+                <button type="button" class="btn-close" @onclick="CloseModal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Opravdu se chcete Odhlásit?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Zrušit</button>
+                <button type="button" class="btn btn-danger" @onclick="Logout">Odhlásit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private string userName = string.Empty;
+    private bool isAdmin = false;
+    private bool isUserLoggedIn = false;
+    private int userId;
+    bool showModal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Přihlášení k události (eventu), neboli znamená, že "naslouchá"...kdyz se vyvoola event spusri se metody co posluchaj "+=".
+        CartService.OnCartChanged += UpdateCartDisplay;
+
+        try
+        {
+            // 1️) Načti token z SessionStorage
+            var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                isUserLoggedIn = true;
+                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+
+                userName = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value ?? "Host";
+                userId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
+
+                var role = jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+                isAdmin = role == "Admin";
+
+                await SyncCartItemCount(); //Načte aktuální počet položek v košíku
+            }
+            else
+            {
+                userName = "Host";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při načítání produktů: {ex.Message}");
+        }
+    }
+
+    private void ShowDisconnectInformation()
+    {
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task SyncCartItemCount()
+    {
+        var cartItems = await CartItemClient.GetCartItemByUserIdAsync(userId); //Vrací list produktu, z toho pak zjsitis pocet
+        CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity)); //Aktualizace počtu položek, taky spustis event, teda volas na UpdateCartDisplay, teda měníš UI
+    }
+
+    private void UpdateCartDisplay()
+    {
+        //Jelikoz metody odkazujici na UpdateCartDisplay jsou někdy v kontextu asynchronních metod, 
+        //mohli by se provádět mimo hlavní vlákno a teda i UpdateCartDisplay,
+        //by se bez pouziti InvokeAsync() mohl provadet mimo hlavni vlakno, to pak dela brikule 
+        InvokeAsync(StateHasChanged); 
+        //Pro bezpečnou aktualizaci je super použít InvokeAsync() provede totiz pozadavek na hlavni Blazor UI vlakne
+    }
+
+    public void Dispose()
+    {
+        // Odhlášení od události, aby nedocházelo k memory leakům spusti se jakmile se NavBar zavře
+        CartService.OnCartChanged -= UpdateCartDisplay;
+    }
+
+
+    private async Task Logout()
+    {
+        await TokenManager.DeleteSessionStorageAsync();
+        NavigationManager.NavigateTo("/login");
+    }
+    private void NavigateToCart()
+    {
+        NavigationManager.NavigateTo("/cart");
+    }
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+    private void NavigateToAdminPanel()
+    {
+        NavigationManager.NavigateTo("/admin-panel");
+    }
+    private void NavigateToMyOrders()
+    {
+        NavigationManager.NavigateTo("/list-of-orders-user");
+    }
+    private void NavigateToEditUserData()
+    {
+        NavigationManager.NavigateTo($"/edit-user-data/{userId}");
+    }
+    private void NavigateToProductDetail(int productId)
+    {
+        NavigationManager.NavigateTo($"/product/{productId}");
+    }
+}

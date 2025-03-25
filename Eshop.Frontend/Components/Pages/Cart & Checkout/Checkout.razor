@@ -1,0 +1,82 @@
+@page "/checkout"
+
+@inject CartService CartService
+
+<h2>Pokladna</h2>
+
+
+@if (cartItems == null)
+{
+    <p>Váš košík je prázdný. <a href="/cart">Zpět do košíku</a></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Produkt</th>
+                <th>Velikost</th>
+                <th>Množství</th>
+                <th>Cena</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in cartItems)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td>@item.Size</td>
+                    <td>@item.Quantity</td>
+                    <td>@(item.UnitPrice * item.Quantity)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h4>Kontaktní údaje</h4>
+    <div class="contact-details">
+        <p><strong>Jméno:</strong> @user.Name</p>
+        <p><strong>Email:</strong> @user.Email</p>
+        <p><strong>Telefon:</strong> @user.Phone</p>
+        <p><strong>Adresa:</strong> @user.Street, @user.Town, @user.Psc</p>
+    </div>
+    <h4>Doprava: 100kč</h4>
+    <h4>Celková cena s dopravou: @PriceWDelivery Kč</h4>
+    <button class="btn btn-primary" @onclick="PlaceOrder">Potvrdit objednávku</button>
+}
+
+
+@code {
+    private List<CartItem> cartItems = new List<CartItem>();
+    private decimal PriceWDelivery => cartItems.Sum(item => item.UnitPrice * item.Quantity) + 100;
+    private int UserId;
+    private User user = new User();
+    protected override async Task OnInitializedAsync()
+    {
+        // Nacitani Tokenu
+        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
+
+            // Nacitani UserId
+            cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+
+            // Nacitani Usera
+            var foundUser = await UserClient.GetUserByIdAsync(UserId);
+            user = foundUser;
+        }
+    }
+
+    private async Task PlaceOrder()
+    {
+        await OrderClient.CreateOrderAsync(UserId);
+
+        var cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+        CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity));
+        NavigationManager.NavigateTo("/order-overview");
+    }
+
+}

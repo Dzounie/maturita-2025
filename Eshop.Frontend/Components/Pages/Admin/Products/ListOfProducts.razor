@@ -1,0 +1,117 @@
+@page "/admin-list-of-products"
+
+<h3>Seznam produktů</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>ImageUri</th>
+            <th>Akce</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var product in products)
+        {
+            <tr>
+                <td>@product.Id</td>
+                <td>@product.Name</td>
+                <td>@product.Price Kč</td>
+                <td><img src="@product.ImageUri" style="width: 50px; height: 50px; object-fit: cover;" /></td>
+                <td>
+                    <button class="btn btn-primary btn-sm" @onclick="() => EditProduct(product.Id)">Upravit</button>
+                    <button class="btn btn-danger btn-sm"
+                        @onclick="() => ShowDeleteConfirmation(product.Id)">Smazat</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button class="btn btn-primary btn-lg mt-3" @onclick="AddProduct">Přidat Produkt</button>
+<button class="btn btn-secondary btn-lg mt-3" @onclick="NavigationService.NavigateToAdminPanel">Zpět</button>
+
+<!-- Modal pro potvrzení smazání,50px vygenerován chat gpt-->
+<div class="modal fade @(showModal ? "show d-block" : "")" tabindex="-1" style="background-color: rgba(0,0,0,0.5);"
+    role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Potvrzení smazání</h5>
+                <button type="button" class="btn-close" @onclick="CloseModal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Opravdu chcete smazat tento produkt?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Zrušit</button>
+                <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Smazat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Product> products = new();
+    private bool showModal = false;
+    private int productIdToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Ověření admina
+            bool isAdmin = await AuthService.IsUserAdmin();
+            if (!isAdmin)
+            {
+                NavigationManager.NavigateTo("/");
+            }
+            
+            products = await ProductClient.GetAllProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při načítání produktů: {ex.Message}");
+        }
+    }
+
+    private void EditProduct(int productId)
+    {
+        NavigationManager.NavigateTo($"/admin-manage-product/{productId}");
+    }
+
+    private void AddProduct()
+    {
+        NavigationManager.NavigateTo("/admin-manage-product");
+    }
+
+    private void ShowDeleteConfirmation(int productId)
+    {
+        productIdToDelete = productId;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task ConfirmDelete() //struktura model code od chat gpt
+    {
+        try
+        {
+            await ProductClient.DeleteProductByIdAsync(productIdToDelete);
+            products = await ProductClient.GetAllProductsAsync(); // Aktualizace seznamu produktů
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při mazání produktu: {ex.Message}");
+        }
+        finally
+        {
+            CloseModal();
+        }
+    }
+}

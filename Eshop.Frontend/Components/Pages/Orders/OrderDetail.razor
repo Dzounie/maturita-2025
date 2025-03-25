@@ -1,0 +1,61 @@
+@page "/order-detail/{OrderId:int}/{ReturnUrl}"
+@using Eshop.Frontend.Models
+@using Eshop.Frontend.Clients
+@inject OrderClient OrderClient
+@inject NavigationManager NavigationManager
+
+<h3>Detail objednávky @OrderId</h3>
+
+@if (orderItems == null)
+{
+    <p>Načítání...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Produkt</th>
+                <th>Velikost</th>
+                <th>Množství</th>
+                <th>Cena za kus</th>
+                <th>Celková cena</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in orderItems)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td>@item.Size</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.UnitPrice Kč</td>
+                    <td>@(item.Quantity* item.UnitPrice) Kč</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p>Doprava: 100 kč</p>
+    <h4>Celková cena objednávky: @TotalPrice Kč</h4>
+    <button class="btn btn-primary" @onclick="GoBack">Zpět</button>
+}
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+
+    [Parameter]
+    public string ReturnUrl { get; set; } = "/";
+    private List<OrderItem>? orderItems;
+    private decimal TotalPrice => (orderItems?.Sum(item => item.Quantity * item.UnitPrice)) + 100 ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        orderItems = await OrderClient.GetOrderItemsByOrderIdAsync(OrderId);
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo(ReturnUrl);
+    }
+}

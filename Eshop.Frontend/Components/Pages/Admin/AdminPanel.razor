@@ -1,0 +1,49 @@
+@page "/admin-panel"
+
+<div class="container mt-5">
+    <h1>Admin Panel</h1>
+    <div class="mt-4">
+        <button class="btn btn-secondary me-2" @onclick="GoToUsers">Manage Users</button>
+        <button class="btn btn-secondary me-2" @onclick="GoToProducts">Manage Products</button>
+        <button class="btn btn-secondary me-2" @onclick="GoToImageUpload">Upload Images</button>
+        <button class="btn btn-secondary me-2" @onclick="GoToOrders">Manage Orders</button>
+        <button class="btn btn-danger" @onclick="GoBackToHome">Go Back to Home</button>
+    </div>
+</div>
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Admnin control package
+        bool isAdmin = await AuthService.IsUserAdmin();
+
+        if (!isAdmin)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+    private void GoToUsers()
+    {
+        NavigationService.NavigateTo("/admin-list-of-users");
+    }
+
+    private void GoToProducts()
+    {
+        NavigationService.NavigateTo("/admin-list-of-products");
+    }
+    private void GoToImageUpload()
+    {
+        NavigationService.NavigateTo("/admin-image-upload");
+    }
+
+    private void GoToOrders()
+    {
+        NavigationService.NavigateTo("/admin-list-of-orders");
+    }
+
+    private void GoBackToHome()
+    {
+        NavigationService.NavigateTo("/");
+    }
+}

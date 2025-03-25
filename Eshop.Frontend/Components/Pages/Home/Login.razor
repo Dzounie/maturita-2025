@@ -1,0 +1,111 @@
+@page "/login"
+
+@layout AuthLayout
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Přihlášení</h4>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@loginRequest" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="loginRequest.Email" />
+                            <ValidationMessage For="() => loginRequest.Email" />
+                        </div>
+                        <div class="mb-3 position-relative">
+                            <label for="password" class="form-label">Heslo</label>
+                            <input id="password" type="@passwordInputType" class="form-control"
+                                @bind="loginRequest.Password" />
+                            <button type="button" class="btn btn-light position-absolute toggle-password"
+                                @onclick="TogglePasswordVisibility">
+                                <i class="@passwordIcon"></i>
+                            </button>
+                            <ValidationMessage For="() => loginRequest.Password" />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Přihlásit</button>
+                    </EditForm>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger mt-3">@ErrorMessage</div>
+                    }
+                </div>
+                <div class="card-footer text-center">
+                    <p>Nemáte účet? <a href="/register">Registrace</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest loginRequest = new LoginRequest();
+    private string? ErrorMessage;
+
+    private string passwordInputType = "password"; // Typ vstupu (password nebo text)
+    private string passwordIcon = "bi bi-eye-slash"; // Ikona pro zobrazení/skrývání hesla
+    private async Task HandleLogin() //místo Login task v UserClient, mohl bych to předělaT, ale tohle taky funguje a kód je docela čistý
+    {
+        try
+        {
+            var response = await HttpClient.PostAsJsonAsync("http://localhost:5042/api/user/login", loginRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ErrorMessage = await response.Content.ReadAsStringAsync();
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+            if (result != null)
+            {
+                // Uložení tokenu a UserId do sessionStorage
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", result.Token);
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "userName", result.Name);
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "userRole", result.Role);
+                await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "userId", result.UserId.ToString());
+
+                // Přesměrování na hlavní stránku
+                NavigationManager.NavigateTo("/", true);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Chyba při připojení k serveru.";
+            Console.WriteLine(ex.Message);
+        }
+
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        if (passwordInputType == "password")
+        {
+            passwordInputType = "text";
+            passwordIcon = "bi bi-eye"; // Ikona pro viditelné heslo
+        }
+        else
+        {
+            passwordInputType = "password";
+            passwordIcon = "bi bi-eye-slash"; // Ikona pro skryté heslo
+        }
+    }
+
+    // Třída pro výsledek přihlášení
+    public class LoginResponse
+    {
+        public string Token { get; set; } = string.Empty;
+        public int UserId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+
+    }
+
+}

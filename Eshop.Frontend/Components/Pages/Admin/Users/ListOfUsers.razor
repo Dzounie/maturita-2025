@@ -1,0 +1,142 @@
+@page "/admin-list-of-users"
+
+
+<h3>Seznam uživatelů</h3>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Phone</th>
+            <th>Town</th>
+            <th>Street</th>
+            <th>PSČ</th>
+            <th>Změna role</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var user in users)
+        {
+            <tr>
+                <td>@user.Id</td>
+                <td>@user.Name</td>
+                <td>@user.Email</td>
+                <td>@user.Role</td>
+                <td>@user.Phone</td>
+                <td>@user.Town</td>
+                <td>@user.Street</td>
+                <td>@user.Psc</td>
+                <td>
+                    @if (user.IsHardcodedAdmin)
+                    {
+                        <span>@user.Role</span>
+                    }
+                    else
+                    {
+                        <InputSelect class="form-select" @bind-Value="user.TempRole">
+                            @foreach (var role in Roles)
+                            {
+                                <option value="@role">@role</option>
+                            }
+                        </InputSelect>
+                    }
+                </td>
+                <td>
+                    @if (!user.IsHardcodedAdmin)
+                    {
+                        <button class="btn btn-primary btn-sm" @onclick="() => ChangeUserRole(user.Id, user.TempRole)">
+                            Uložit
+                        </button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteUser(user.Id)">
+                            Smazat uživatele
+                        </button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button class="btn btn-primary" @onclick="NavigateToAdminPanel">Zpět</button>
+
+@code {
+    private List<User> users = new();
+    private List<string> Roles = new() { "User", "Admin" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            //Admin control package :)
+            bool isAdmin = await AuthService.IsUserAdmin();
+
+            if (!isAdmin)
+            {
+                NavigationManager.NavigateTo("/");
+            }
+
+            users = await UserClient.GetAllUsersAsync();
+
+            // Přiřazení aktuální role do TempRole
+            await LoadUsers();
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při načítání uživatelů: {ex.Message}");
+        }
+    }
+
+    private async Task ChangeUserRole(int userId, string newRole)
+    {
+        try
+        {
+            //Naplnění requestu
+            var request = new ChangeRoleRequest
+            {
+                UserId = userId,
+                NewRole = newRole
+            };
+
+            await UserClient.UpdateUserRoleAsync(request);
+            Console.WriteLine($"Role uživatele s ID {userId} se změnila na {newRole}.");
+
+            // Aktualizace uživatelů
+            users = await UserClient.GetAllUsersAsync();
+
+            // Zajistí, že TempRole se zachová
+            await LoadUsers();
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při změně Role: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        await UserClient.DeleteUserById(userId);
+
+        users = await UserClient.GetAllUsersAsync();
+
+        await LoadUsers();
+    }
+
+    private void NavigateToAdminPanel()
+    {
+        NavigationManager.NavigateTo("/admin-panel");
+    }
+    private async Task LoadUsers()
+    {
+        users = await UserClient.GetAllUsersAsync();
+        foreach (var u in users)
+        {
+            u.TempRole = u.Role;
+        }
+    }
+
+}

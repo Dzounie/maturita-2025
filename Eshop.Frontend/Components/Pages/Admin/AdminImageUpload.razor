@@ -1,0 +1,29 @@
+@page "/admin-image-upload"
+
+<InputFile OnChange="HandleFileSelected" />
+@if (!string.IsNullOrEmpty(uploadedImagePath))
+{
+    <div class="mt-2 text-success">
+        Obrázek nahrán: <code>@uploadedImagePath</code><br />
+        <img src="@uploadedImagePath" style="max-width: 200px; margin-top: 10px;" />
+    </div>
+}
+
+@code {
+    [Inject] public ImageClient ImageClient { get; set; } = default!;
+    private string? uploadedImagePath;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            uploadedImagePath = await ImageClient.UploadImageAsync(file);
+        }
+        catch (Exception ex)
+        {
+            uploadedImagePath = null;
+            Console.WriteLine($"Upload selhal: {ex.Message}");
+        }
+    }
+}

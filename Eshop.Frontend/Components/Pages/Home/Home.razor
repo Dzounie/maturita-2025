@@ -1,0 +1,112 @@
+﻿@page "/"
+
+
+<div class="container mt-5 pt-5">
+    <!-- Vyhledávací rámeček -->
+    <div class="search-bar mb-4">
+        <form @onsubmit="HandleSearch">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Hledat produkty..." @bind="searchString" />
+                <button type="submit" class="btn btn-primary">Hledat</button>
+            </div>
+        </form>
+    </div>
+
+
+    <!-- Mřížka produktů -->
+    <div class="row">
+        @if (filteredProducts != null && filteredProducts.Any())
+        {
+            @foreach (var product in filteredProducts)
+            {
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-4 d-flex" @key=product.Id>
+                    <div class="card product-card w-100">
+                        <img src="@product.ImageUri" class="card-img-top product-image" alt="@product.Name"
+                            @onclick="() => NavigateToProductDetail(product.Id)" />
+                        <div class="card-body text-center">
+                            <h5 class="card-title">@product.Name</h5>
+                            <p class="card-text text-muted">Cena: @product.Price Kč</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            @foreach (var product in products)
+            {
+                <div class="col-md-4 col-lg-3 mb-4 d-flex">
+                    <div class="card product-card w-100">
+                        <img src="@product.ImageUri" class="card-img-top product-image" alt="@product.Name"
+                            @onclick="() => NavigateToProductDetail(product.Id)" />
+                        <div class="card-body text-center">
+                            <h5 class="card-title">@product.Name</h5>
+                            <p class="card-text text-muted">Cena: @product.Price Kč</p>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<Product> products = new();
+    private List<Product> filteredProducts = new();
+    private string userName = string.Empty;
+    private int userId;
+    private string searchString = string.Empty;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 1) Načti token z SessionStorage
+            var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+
+                //Jmeno na zobrazeni
+                userName = jwtToken.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value ?? "Host";
+
+                //Id na hledani produktů
+                userId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
+            }
+
+            // 2) Stáhnout produkty
+            products = await ProductClient.GetAllProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při načítání produktů: {ex.Message}");
+        }
+
+
+    }
+
+    private async Task HandleSearch()
+    {
+        Console.WriteLine($"Hledám produkty pro dotaz: {searchString}");
+
+        if (string.IsNullOrWhiteSpace(searchString))
+        {
+            filteredProducts = new List<Product>(products); // Zobrazíme všechny produkty, pokud je search bar prázdný
+        }
+        else
+        {
+            filteredProducts = await ProductClient.GetFilteredProductsAsync(searchString);
+        }
+        Console.WriteLine($"Počet nalezených produktů: {filteredProducts.Count}");
+        StateHasChanged(); // Zajistí aktualizaci UI
+    }
+
+    private void NavigateToProductDetail(int productId)
+    {
+        NavigationManager.NavigateTo($"/product/{productId}");
+    }
+}

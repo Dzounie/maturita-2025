@@ -1,0 +1,25 @@
+﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+@using System.IdentityModel.Tokens.Jwt
+@using Microsoft.JSInterop
+@using Eshop.Frontend
+@using Eshop.Frontend.Shared
+@using Eshop.Frontend.Components
+@using Eshop.Frontend.Utils
+@using Eshop.Frontend.Models
+@using Eshop.Frontend.Clients
+@inject NavigationManager NavigationManager
+@inject NavigationService NavigationService
+@inject IJSRuntime JSRuntime
+@inject TokenManager TokenManager
+@inject HttpClient HttpClient
+@inject ProductClient ProductClient
+@inject CartItemClient CartItemClient
+@inject OrderClient OrderClient
+@inject UserClient UserClient
+@inject AuthService AuthService

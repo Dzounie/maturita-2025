@@ -1,0 +1,112 @@
+﻿@page "/admin-manage-product/{id:int?}"
+
+
+<h2 class="mt-4">@(product.Id == 0 ? "Přidávání produktu" : "Úprava produktu")</h2>
+<EditForm Model="@product" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Jméno produktu</label>
+        <InputText id="name" class="form-control" @bind-Value="product.Name" />
+    </div>
+    <div class="mb-3">
+        <label for="price" class="form-label">Cena</label>
+        <div class="input-group">
+            <InputNumber id="price" class="form-control" @bind-Value="product.Price" />
+            <span class="input-group-text">Kč</span>
+        </div>
+    </div>
+    <div class="mb-3">
+        <label for="imageUri" class="form-label">Odkaz na obrázek</label>
+        <InputText id="imageUri" class="form-control" @bind-Value="product.ImageUri" />
+    </div>
+    <button type="submit" class="btn btn-success">Uložit</button>
+    <button @onclick="Navigateback" class="btn btn-success">Zpět</button>
+    <button type="button" class="btn btn-secondary ms-2" @onclick="ToggleImageList">List nahraných obrázků</button>
+
+    @if (showImagePaths)
+    {
+        <div class="mt-3">
+            <h5>Nahrané obrázky:</h5>
+            <ul>
+                @foreach (var path in imagePaths)
+                {
+                    <li>@path</li>
+                }
+            </ul>
+        </div>
+    }
+
+</EditForm>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; } // volitelné z URL, může být null nebo nabýcat hodnot
+    private Product product = new();
+    public List<string> imagePaths = new();
+    private bool showImagePaths = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id.HasValue && Id.Value > 0)
+        {
+            try
+            {
+                //Admin control package :)
+                bool isAdmin = await AuthService.IsUserAdmin();
+
+                if (!isAdmin)
+                {
+                    NavigationManager.NavigateTo("/");
+                }
+
+                product = await ProductClient.GetProductByIdAsync(Id.Value);
+                imagePaths = await ProductClient.GetAvailableImagePathsAsync();
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chyba při načítání produktu: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            if (product.Id == 0)
+            {
+                //Tvoření nového produktu
+                await ProductClient.AddProductAsync(product);
+            }
+            else
+            {
+                //Úprava produktu
+                await ProductClient.UpdateProductAsync(product.Id, product);
+            }
+            Navigateback();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba během akce: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleImageList()
+    {
+        if (!showImagePaths)
+        {
+            imagePaths = await ProductClient.GetAvailableImagePathsAsync();
+        }
+
+        showImagePaths = !showImagePaths;
+    }
+
+    private void Navigateback()
+    {
+        NavigationManager.NavigateTo("/admin-list-of-products");
+    }
+
+}

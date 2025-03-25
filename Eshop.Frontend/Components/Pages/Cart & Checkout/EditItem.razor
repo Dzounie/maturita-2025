@@ -1,0 +1,88 @@
+@page "/edit-cartItem/{id:int}"
+
+<h3>Upravit položku @Id</h3>
+
+<EditForm Model="@request" OnValidSubmit="HandleSubmit" class="container mt-4">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row mb-3">
+        <label for="name" class="col-sm-2 col-form-label">Název:</label>
+        <div class="col-sm-10">
+            <input type="text" id="name" class="form-control" @bind="name" readonly />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="size" class="col-sm-2 col-form-label">Velikost:</label>
+        <div class="col-sm-10">
+            <InputSelect id="size" class="form-select" @bind-Value="request.Size">
+                <option value="">Vyberte Velikost</option>
+                @foreach (var size in ShoeSize)
+                {
+                    <option value="@size">@size</option>
+                }
+            </InputSelect>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <label for="quantity" class="col-sm-2 col-form-label">Množství:</label>
+        <div class="col-sm-10">
+            <InputSelect id="quantity" class="form-select" @bind-Value="request.Quantity">
+                <option value="">Vyberte Množství</option>
+                @for (int i = 1; i <= 10; i++)
+                {
+                    <option value="@i">@i</option>
+                }
+            </InputSelect>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-10 offset-sm-2">
+            <button type="submit" class="btn btn-primary me-2">Uložit</button>
+            <button type="button" class="btn btn-secondary" @onclick="NavigateToCart">Zpět do košíku</button>
+        </div>
+    </div>
+</EditForm>
+
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    private CartItem? cartItem;
+    private CartItemUpdateRequest request { get; set; } = new CartItemUpdateRequest
+        {
+            Size = "35",
+            Quantity = 1
+        };
+    private readonly List<string> ShoeSize = new List<string>();
+    public string? name;
+
+    protected override async Task OnInitializedAsync()
+    {
+        cartItem = await CartItemClient.GetCartItemByIdAsync(Id);
+
+        name = cartItem.ProductName;
+        request.Size = cartItem.Size;
+        request.Quantity = cartItem.Quantity;
+
+        for (int i = 35; i <= 48; i++)
+        {
+            ShoeSize.Add(i.ToString());
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        await CartItemClient.UpdateCartItemAsync(Id, request);
+        NavigationManager.NavigateTo("/cart");
+    }
+
+    private void NavigateToCart()
+    {
+        NavigationManager.NavigateTo("/cart");
+    }
+}

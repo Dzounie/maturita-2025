@@ -1,0 +1,129 @@
+@page "/product/{Id:int}"
+
+@inject CartService CartService
+
+<div class="container mt-4">
+    <div class="row">
+
+        <!-- Pravá část (obrázek produktu) -->
+        <div class="col-md-6 d-flex justify-content-center align-items-center">
+            <img src="@product.ImageUri" alt="@CartItem.ProductName" class="product-image img-fluid">
+        </div>
+
+        <!-- Levá část (detaily produktu) -->
+        <div class="col-md-6">
+            <h3 class="mt-4">@CartItem.ProductName</h3>
+
+            <EditForm Model="@CartItem" OnValidSubmit="HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="mb-3">
+                    <label for="unitPrice" class="form-label">Cena za kus</label>
+                    <div class="input-group">
+                        <InputNumber id="unitPrice" class="form-control" @bind-Value="CartItem.UnitPrice" readonly />
+                        <span class="input-group-text">Kč</span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="size" class="form-label">Velikost</label>
+                    <InputSelect id="size" class="form-select" @bind-Value="CartItem.Size">
+                        <option value="">Vyberte Velikost</option>
+                        @foreach (var size in ShoeSize)
+                        {
+                            <option value="@size">@size</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="mb-3">
+                    <label for="quantity" class="form-label">Množství</label>
+                    <InputSelect id="quantity" class="form-select" @bind-Value="CartItem.Quantity">
+                        <option value="">Vyberte Množství</option>
+                        @for (int i = 1; i <= 10; i++)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </InputSelect>
+                </div>
+                <button type="submit" class="btn btn-success w-100">Přidat do košíku</button>
+            </EditForm>
+            <button class="btn btn-primary mt-2" @onclick="NavigationService.NavigateToHome">Zpět na hlavní
+                stránku</button>
+        </div>
+    </div>
+</div>
+
+
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private CartItem CartItem { get; set; } = new CartItem
+        {
+            Size = "35",
+            Quantity = 1
+        };
+
+    private string? ErrorMessage;
+    private Product product = new();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var productId = Id;
+            product = await ProductClient.GetProductByIdAsync(productId);
+
+            //Vysles ty hodnoty do CartItemu
+            CartItem.ProductId = product.Id;
+            CartItem.ProductName = product.Name;
+            CartItem.UnitPrice = product.Price;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+
+        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            Console.WriteLine("Token existuje");
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+
+            // Načtení jména z claimu bude to stringovej typ
+            var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+            //Predelej do integeru
+            if (userIdClaim != null)
+            {
+                CartItem.UserId = int.Parse(userIdClaim.Value);
+            }
+        }
+    }
+
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await CartItemClient.AddCartItemAsync(CartItem);
+
+            var cartItems = await CartItemClient.GetCartItemByUserIdAsync(CartItem.UserId);
+            CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity)); //volam na UpdateCartCount, teda spoustim event a s ním posluchající metody
+            NavigationService.NavigateToHome();
+
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            Console.WriteLine($"Chyba během akce: {ex.Message}");
+        }
+    }
+
+    List<string> ShoeSize = new List<string> { "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46",
+"47", "48" }; //mohl bych cist z ciselniku vzdau, ale tohle je jednodušší a stačí to jelikož se s velikostmi nic nedělá
+
+
+}

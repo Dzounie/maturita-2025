@@ -1,0 +1,80 @@
+@page "/register"
+
+@layout AuthLayout
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4>Registrace</h4>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@user" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Jméno</label>
+                            <InputText id="name" class="form-control" @bind-Value="user.Name" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="user.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Telefon</label>
+                            <InputText id="phone" class="form-control" @bind-Value="user.Phone" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Heslo</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="user.Password" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="city" class="form-label">Město</label>
+                            <InputText id="city" class="form-control" @bind-Value="user.Town" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Ulice</label>
+                            <InputText id="address" class="form-control" @bind-Value="user.Street" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="psc" class="form-label">PSČ</label>
+                            <InputText id="psc" class="form-control" @bind-Value="user.Psc" />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Registrovat</button>
+                    </EditForm>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger mt-3">@ErrorMessage</div>
+                    }
+                </div>
+            </div>
+            <button class="btn btn-secondary w-100 mt-3" @onclick="()=>NavigationService.NavigateToLogin()">Zpět na
+                přihlášení</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private User user = new User();
+
+    private string? ErrorMessage;
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            Console.WriteLine("Registrace uživatele začala.");
+            await UserClient.AddUserAsync(user);
+            Console.WriteLine("Registrace uživatele dokončena.");
+            NavigationManager.NavigateTo("/login");
+
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            Console.WriteLine($"Chyba během registrace: {ex.Message}");
+        }
+    }
+
+}

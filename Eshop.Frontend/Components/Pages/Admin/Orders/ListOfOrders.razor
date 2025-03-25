@@ -1,0 +1,102 @@
+@page "/admin-list-of-orders"
+
+
+<h3>Seznam Objednávek</h3>
+@if (orders == null)
+{
+    <p>Nacitani</p>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>UserId</th>
+            <th>UserName</th>
+            <th>Celková Cena</th>
+            <th>Aktuální Status</th>
+            <th>Změna statusu</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (orders != null)
+        {
+            @foreach (var order in orders)
+            {
+                <tr>
+                    <td>@order.Id</td>
+                    <td>@order.UserId</td>
+                    <td>@order.UserName</td>
+                    <td>@order.TotalPrice Kč</td>
+                    <td>@order.StatusName</td>
+                    <td>
+                        <InputSelect id="status" @bind-Value="order.StatusId" class="form-select">
+                            <option value="0">Vyberte Status</option>
+
+                            <!-- Možnosti stavů -->
+                            @foreach (var status in OrderStatuses)
+                            {
+                                <option value="@status.Id">@status.StatusName</option>
+                            }
+                        </InputSelect>
+                    </td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => NavigateToDetail(order.Id)">Detail</button>
+                        <button class="btn btn-success"
+                            @onclick="() => UpdateOrderStatus(order.Id, order.StatusId)">Uložit</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+
+<button class="btn btn-primary" @onclick="NavigationService.NavigateToAdminPanel">Zpět</button>
+
+
+@code {
+    private List<Order> orders = new();
+    private List<OrderStatus> OrderStatuses = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Ověření admina
+            bool isAdmin = await AuthService.IsUserAdmin();
+            if (!isAdmin)
+            {
+                NavigationManager.NavigateTo("/");
+            }
+
+            OrderStatuses = await OrderClient.GetAllOrderStatusesAsync();
+            orders = await OrderClient.GetAllOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při načítání objednávek nebo stavů: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateOrderStatus(int orderId, int newStatusId)
+    {
+        try
+        {
+            await OrderClient.UpdateOrderStatusAsync(orderId, newStatusId);
+            Console.WriteLine($"Stav objednávky {orderId} byl změněn na {newStatusId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při změně stavu objednávky: {ex.Message}");
+        }
+
+        //Aktualizace stránky
+        orders = await OrderClient.GetAllOrdersAsync(); 
+    }
+    private void NavigateToDetail(int OrderId)
+    {
+        NavigationManager.NavigateTo($"/order-detail/{OrderId}/admin-list-of-orders");
+    }
+
+}

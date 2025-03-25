@@ -1,0 +1,100 @@
+@page "/cart"
+
+@inject CartService CartService
+
+<h2 class="mt-4">Košík</h2>
+
+@if (cartItems == null || !cartItems.Any())
+{
+    <p>Váš košík je prázdný.</p>
+    <button class="btn btn-primary" @onclick="NavigationService.NavigateToHome">Zpět na hlavní stránku</button>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Produkt</th>
+                <th>Velikost</th>
+                <th>Množství</th>
+                <th>Cena</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in cartItems)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td>@item.Size</td>
+                    <td>@item.Quantity</td>
+                    <td>@(item.UnitPrice* item.Quantity) Kč</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" @onclick="() => RemoveCartItem(item.Id)">Odstranit</button>
+                    </td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" @onclick="() => NavigateToEdit(item.Id)">Edit</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h4>Celková cena: @TotalPrice Kč</h4>
+    <button class="btn btn-primary" @onclick="ProceedToCheckout">Pokračovat k pokladně</button>
+    <button class="btn btn-secondary" @onclick="NavigationService.NavigateToHome">Zpět na hlavní stránku</button>
+
+}
+
+@code {
+    private List<CartItem>? cartItems;
+    private decimal TotalPrice => cartItems?.Sum(item => item.UnitPrice * item.Quantity) ?? 0;
+    //kdyz je cartItems null vrati "0"
+    private int UserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Nacitani Tokenu
+        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
+
+            //Nacitani kosiku jako takoveho, takze zobrazeni produktu a pocet u ikonky
+            await LoadCartProducts();
+            //spusti se kdykoliv se nacita stranka...kdyz editujes presmerovava to jinam,
+            //proto nemusim mit nic s CartService v Edit-item.razor
+        }
+        else
+        {
+            Console.WriteLine("Not logged in.");
+        }
+
+    }
+
+    private async Task LoadCartProducts()
+    {
+        cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+        CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity));
+    }
+    private void NavigateToEdit(int itemId)
+    {
+        NavigationManager.NavigateTo($"/edit-cartItem/{itemId}");
+    }
+
+    private async Task RemoveCartItem(int id)
+    {
+        await CartItemClient.DeleteCartItemAsync(id);
+        cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+        await LoadCartProducts();
+        CartService.NotifyCartChanged();
+    }
+
+    private void ProceedToCheckout()
+    {
+        NavigationManager.NavigateTo("/checkout");
+    }
+
+}

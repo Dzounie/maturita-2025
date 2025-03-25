@@ -1,0 +1,94 @@
+@page "/edit-user-data/{UserId:int}"
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4>Úprava uživatele: @updatedUser.Name</h4>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@updatedUser" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Jméno</label>
+                            <InputText id="name" class="form-control" @bind-Value="updatedUser.Name" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <InputText id="email" class="form-control" @bind-Value="updatedUser.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Ulice</label>
+                            <InputText id="address" class="form-control" @bind-Value="updatedUser.Street" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="city" class="form-label">Město</label>
+                            <InputText id="city" class="form-control" @bind-Value="updatedUser.Town" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Telefon</label>
+                            <InputText id="phone" class="form-control" @bind-Value="updatedUser.Phone" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="psc" class="form-label">PSČ</label>
+                            <InputText id="psc" class="form-control" @bind-Value="updatedUser.Psc" />
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Potvrdit změny</button>
+                    </EditForm>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger mt-3">@ErrorMessage</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button class="btn btn-primary" @onclick="NavigationService.NavigateToHome">Zpět na hlavní stránku</button>
+
+
+@code {
+
+    [Parameter]
+    public int UserId { get; set; }
+    private UpdatedUserRequest updatedUser = new UpdatedUserRequest();
+    private string? ErrorMessage;
+    private User userDto = new User();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            userDto = await UserClient.GetUserByIdAsync(UserId);
+
+            updatedUser.Name = userDto.Name;
+            updatedUser.Phone = userDto.Phone;
+            updatedUser.Email = userDto.Email;
+            updatedUser.Street = userDto.Street;
+            updatedUser.Town = userDto.Town;
+            updatedUser.Psc = userDto.Psc;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Chyba při načítání uživatele: {ex.Message}");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await UserClient.UpdateUserDataAsync(UserId, updatedUser);
+            NavigationManager.NavigateTo("/");
+
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            Console.WriteLine($"Chyba při aktualizaci uživatele: {ex.Message}");
+        }
+    }
+}

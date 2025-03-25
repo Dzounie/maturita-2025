@@ -1,0 +1,73 @@
+@page "/order-overview"
+@inject HttpClient HttpClient
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject OrderClient OrderClient
+@using Eshop.Frontend.Models
+@using Eshop.Frontend.Clients
+
+<h3>Vaše objednávka byla přijata</h3>
+
+@if (order == null)
+{
+    <p>Načítám objednávku...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Datum vytvoření</th>
+                <th>Celková cena</th>
+                <th>Stav</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (order != null)
+            {
+                <td>@order.Id</td>
+                <td>@order.CreatedAt.ToLocalTime()</td>
+                <td>@order.TotalPrice</td>
+                <td>@order.StatusName</td>
+                <button class="btn btn-secondary" @onclick="() => NavigateToDetail()">Detail</button>
+            }
+        </tbody>
+    </table>
+}
+<button class="btn btn-primary" @onclick="ReturnToHomepage">Zpět na hlavní stránku</button>
+
+@code {
+    private Order order = new Order();
+    private int UserId;
+    private void NavigateToDetail()
+    {
+        NavigationManager.NavigateTo($"/order-detail/{order!.Id}/order-overview");
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                var jwtToken = handler.ReadJwtToken(token);
+                UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
+            }
+            //Najde latest objednavku podle UserId z tokenu
+            order = await OrderClient.GetLatestOrderByUserIdAsync(UserId);
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"OrderOverview chyba: {e.Message}");
+        }
+    }
+
+    private void ReturnToHomepage()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+}

@@ -1,0 +1,56 @@
+﻿@inject NavigationManager NavigationManager
+@inject TokenManager TokenManager
+@inject IJSRuntime JSRuntime
+@using Eshop.Frontend.Utils
+@using Eshop.Frontend.Components
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        @if (isUserLoggedIn || IsOnLoginPage() || IsOnRegisterPage())
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        }
+        else
+        {
+            <text>Redirecting to login...</text>
+        }
+    </Found>
+
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <p role="alert">Page not found.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private bool isUserLoggedIn;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Kontrola přihlášení
+        await CheckUserLoginStatus();
+    }
+    private async Task CheckUserLoginStatus()
+    {
+        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+        isUserLoggedIn = !string.IsNullOrEmpty(token);
+
+        if (!isUserLoggedIn)
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+
+    private bool IsOnLoginPage()
+    {
+        var currentUri = NavigationManager.Uri.ToLower();
+        return currentUri.EndsWith("/login");
+    }
+    private bool IsOnRegisterPage()
+    {
+        var currentUri = NavigationManager.Uri.ToLower();
+        return currentUri.EndsWith("/register");
+    }
+}
