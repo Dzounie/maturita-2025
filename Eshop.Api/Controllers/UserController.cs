@@ -104,9 +104,10 @@ public class UserController(EshopContext context, IConfiguration configuration) 
     }
 
     [Authorize]
-    [HttpPut("update-user-data/{id}")]
-    public async Task<IActionResult> UpdateUserData(int id, [FromBody] UpdatedUserRequest request)
+    [HttpPut("update-user-data")]
+    public async Task<IActionResult> UpdateUserData([FromBody] UpdatedUserRequest request)
     {
+        var id = int.Parse(User.FindFirst("UserId")!.Value);
         var user = await context.Users.FindAsync(id);
         if (user == null)
         {
@@ -160,18 +161,7 @@ public class UserController(EshopContext context, IConfiguration configuration) 
         public string Psc { get; set; } = string.Empty;
     }
 
-
-    [Authorize]
-    [HttpDelete("Clear")]
-    public async Task<IActionResult> ClearAsync()
-    {
-        context.Users.RemoveRange(context.Users.ToList());
-        await context.SaveChangesAsync();
-
-        return Ok("USERS GOT NUKED.");
-    }
-
-    [Authorize]
+    [Authorize (Roles = "Admin")]
     [HttpDelete("delete-by-id/{id:int}")]
     public async Task<IActionResult> DeleteUserAsync(int id)
     {
@@ -185,6 +175,15 @@ public class UserController(EshopContext context, IConfiguration configuration) 
         await context.SaveChangesAsync();
 
         return Ok(new { message = "Uživatel byl odstraněn." });
+    }
+
+    private int GetUserIdFromToken()
+    {
+        var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+            if (userIdClaim == null)
+        throw new Exception("Chybí UserId v JWT tokenu");
+
+        return int.Parse(userIdClaim.Value);
     }
 
 }

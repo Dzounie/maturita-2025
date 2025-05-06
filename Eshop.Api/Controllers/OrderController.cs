@@ -132,6 +132,14 @@ public class OrderController(EshopContext context) : ControllerBase
     [HttpGet("get-order-items/{orderId}")]
     public async Task<IActionResult> GetOrderItemsAsync(int orderId)
     {
+        var userIdFromToken = int.Parse(User.FindFirst("UserId")!.Value);
+
+        var order = await context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order == null || order.UserId != userIdFromToken)
+        {
+            return NotFound("Objednávka nebyla nalezena.");
+        }
+
         var orderItems = await context.OrderItems
             .Where(item => item.OrderId == orderId)
             .ToListAsync();
@@ -164,6 +172,15 @@ public class OrderController(EshopContext context) : ControllerBase
     public class UpdateOrderStatusRequest
     {
         public int StatusId { get; set; }
+    }
+
+    private int GetUserIdFromToken()
+    {
+        var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+        if (userIdClaim == null)
+        throw new Exception("Chybí UserId v JWT tokenu");
+
+        return int.Parse(userIdClaim.Value);
     }
 
 }
