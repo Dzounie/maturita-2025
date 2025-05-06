@@ -31,12 +31,12 @@ public class UserClient(HttpClient httpClient, IJSRuntime jsRuntime, AuthService
         }
     }
 
-    public async Task<User> GetUserByIdAsync(int UserId)
+    public async Task<User> GetCurrentUserAsync()
     {
         //Posílaní Tokenu do API
         await SendToken();
 
-        var user = await httpClient.GetFromJsonAsync<User>($"api/user/{UserId}");
+        var user = await httpClient.GetFromJsonAsync<User>($"api/user/current-user");
         if (user == null)
         {
             throw new Exception("Uživatel nebyl nalezen.");
@@ -73,12 +73,15 @@ public class UserClient(HttpClient httpClient, IJSRuntime jsRuntime, AuthService
         }
     }
 
-    public async Task UpdateUserDataAsync(int UserId, UpdatedUserRequest updatedUser)
+    public async Task UpdateUserDataAsync(UpdatedUserRequest updatedUser)
     {
+        //Získání ID uživatele z tokenu
+        var UserId = await authService.GetUserIdAsync();
+        
         //Posílaní Tokenu do API
         await SendToken();
 
-        var response = await httpClient.PutAsJsonAsync($"/api/user/update-user-data/{UserId}", updatedUser);
+        var response = await httpClient.PutAsJsonAsync($"/api/user/update-user-data", updatedUser);
 
         if (!response.IsSuccessStatusCode)
         {

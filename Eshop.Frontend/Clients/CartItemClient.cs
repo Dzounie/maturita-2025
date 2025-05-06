@@ -26,17 +26,12 @@ public class CartItemClient(HttpClient httpClient, AuthService authService)
     }
 
 
-    public async Task<List<CartItem>> GetCartItemByUserIdAsync(int userId) //(GetCartItemsByUserIdAsync)
+    public async Task<List<CartItem>> GetCartItemByUserIdAsync() //(GetCartItemsByUserIdAsync)
     {
         //Posílaní Tokenu do API
         await SendToken();
-        if (userId == 0)
-        {
-            throw new Exception("Nenašlo se ID uživatele");
-        }
 
-        Console.WriteLine($"Hledání košíku pro ID: {userId}");
-        var cartItems = await httpClient.GetFromJsonAsync<List<CartItem>>($"/api/cartItem/byUser/{userId}");
+        var cartItems = await httpClient.GetFromJsonAsync<List<CartItem>>($"/api/cartItem");
         if (cartItems == null)
         {
             throw new Exception("Chyba při načítání produktů");
@@ -70,20 +65,6 @@ public class CartItemClient(HttpClient httpClient, AuthService authService)
         {
             var errorMessage = await response.Content.ReadAsStringAsync();
             throw new Exception($"Chyba při mazání produktu: {errorMessage}");
-        }
-    }
-
-    public async Task DeleteCartItemsByUserIdAsync(int userId)
-    {
-        //Posílaní Tokenu do API
-        await SendToken();
-
-        var response = await httpClient.DeleteAsync($"/api/cartItem/deleteByUser/{userId}");
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorMessage = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Chyba při mazání produktů: {errorMessage}");
         }
     }
 

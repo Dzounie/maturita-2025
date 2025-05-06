@@ -2,6 +2,7 @@ using System.Net.Http.Json; //PutAS, PostAs...
 using System.Text.Json; //Serializer
 using Eshop.Frontend.Models;
 using Eshop.Frontend.Utils;
+using System.Net; //HttpStatusCode
 
 
 namespace Eshop.Frontend.Clients;
@@ -42,12 +43,13 @@ public class ProductClient(HttpClient httpClient, AuthService authService)
         //Posílaní Tokenu do API
         await SendToken();
 
-        var product = await httpClient.GetFromJsonAsync<Product>($"http://localhost:5042/api/product/{productId}");
-        if (product == null)
+        var response = await httpClient.GetAsync($"/api/product/{productId}");
+        if(response.StatusCode == HttpStatusCode.NotFound)
         {
             throw new Exception("Produkt nebyl nalezen.");
         }
-        return product;
+        response.EnsureSuccessStatusCode(); //Pokud je status code 200, tak nic nedělá, pokud je jiný, tak vyhodí výjimku
+        return await response.Content.ReadFromJsonAsync<Product>();
     }
 
     //Admin

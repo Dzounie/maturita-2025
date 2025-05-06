@@ -76,7 +76,7 @@ else
 
     private async Task LoadCartProducts()
     {
-        cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+        cartItems = await CartItemClient.GetCartItemByUserIdAsync();
         CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity));
     }
     private void NavigateToEdit(int itemId)
@@ -87,7 +87,7 @@ else
     private async Task RemoveCartItem(int id)
     {
         await CartItemClient.DeleteCartItemAsync(id);
-        cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+        cartItems = await CartItemClient.GetCartItemByUserIdAsync();
         await LoadCartProducts();
         CartService.NotifyCartChanged();
     }

@@ -9,12 +9,12 @@ public class OrderClient(HttpClient httpClient, AuthService authService)
     private readonly HttpClient httpClient = httpClient;
     private readonly AuthService authService = authService;
 
-    public async Task CreateOrderAsync(int userId)
+    public async Task CreateOrderAsync()
     {
         //Posílaní Tokenu do API
         await SendToken();
 
-        var response = await httpClient.PostAsJsonAsync($"/api/order/create-order/{userId}", userId);
+        var response = await httpClient.PostAsync("/api/order/create-order", null);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -38,12 +38,12 @@ public class OrderClient(HttpClient httpClient, AuthService authService)
         return orderItems;
     }
 
-    public async Task<Order> GetLatestOrderByUserIdAsync(int userId)
+    public async Task<Order> GetLatestOrderByUserIdAsync()
     {
         //Posílaní Tokenu do API
         await SendToken();
 
-        var order = await httpClient.GetFromJsonAsync<Order>($"/api/order/get-latest-order/{userId}");
+        var order = await httpClient.GetFromJsonAsync<Order>($"/api/order/get-latest-order");
         if (order == null)
         {
             throw new Exception("Nebyly nalezeny žádné objednávky");
@@ -52,16 +52,21 @@ public class OrderClient(HttpClient httpClient, AuthService authService)
         return order;
     }
 
-    public async Task<List<Order>> GetOrdersByUserIdAsync(int userId)
+    public async Task<List<Order>> GetOrdersByUserIdAsync()
     {
         //Posílaní Tokenu do API
         await SendToken();
 
-        var orders = await httpClient.GetFromJsonAsync<List<Order>>($"/api/order/get-orders/{userId}");
-        if (orders == null)
+        var response = await httpClient.GetAsync("/api/order/get-orders");
+
+        if (!response.IsSuccessStatusCode)
         {
-            throw new Exception("Nebyly nalezeny žádné objednávky");
+            var errorText = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Chyba z API: {errorText}");
+            throw new Exception("Nepodařilo se načíst objednávky.");
         }
+
+        var orders = await response.Content.ReadFromJsonAsync<List<Order>>();
 
         return orders;
     }
@@ -113,5 +118,7 @@ public class OrderClient(HttpClient httpClient, AuthService authService)
             httpClient.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
+        Console.WriteLine($"Token: {token}");
+
     }
 }

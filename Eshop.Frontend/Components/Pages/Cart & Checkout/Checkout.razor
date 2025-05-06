@@ -62,19 +62,19 @@ else
             UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
 
             // Nacitani UserId
-            cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+            cartItems = await CartItemClient.GetCartItemByUserIdAsync();
 
             // Nacitani Usera
-            var foundUser = await UserClient.GetUserByIdAsync(UserId);
+            var foundUser = await UserClient.GetCurrentUserAsync();
             user = foundUser;
         }
     }
 
     private async Task PlaceOrder()
     {
-        await OrderClient.CreateOrderAsync(UserId);
+        await OrderClient.CreateOrderAsync();
 
-        var cartItems = await CartItemClient.GetCartItemByUserIdAsync(UserId);
+        var cartItems = await CartItemClient.GetCartItemByUserIdAsync();
         CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity));
         NavigationManager.NavigateTo("/order-overview");
     }

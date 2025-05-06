@@ -39,19 +39,10 @@ else
 
 @code {
     private List<Order> orders = new List<Order>();
-    private int UserId;
 
     protected override async Task OnInitializedAsync()
     {
-        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
-        if (!string.IsNullOrEmpty(token))
-        {
-            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
-            UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
-        }
-
-        orders = await OrderClient.GetOrdersByUserIdAsync(UserId);
+        orders = await OrderClient.GetOrdersByUserIdAsync();
     }
 
     private void ReturnToHomepage()

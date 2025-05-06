@@ -68,6 +68,7 @@
 
     private string? ErrorMessage;
     private Product product = new();
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -83,23 +84,7 @@
         catch (Exception ex)
         {
             Console.WriteLine(ex.Message);
-        }
-
-        var token = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            Console.WriteLine("Token existuje");
-            var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            var jwtToken = handler.ReadJwtToken(token);
-
-            // Načtení jména z claimu bude to stringovej typ
-            var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
-            //Predelej do integeru
-            if (userIdClaim != null)
-            {
-                CartItem.UserId = int.Parse(userIdClaim.Value);
-            }
+            NavigationManager.NavigateTo("/error");
         }
     }
 
@@ -110,7 +95,7 @@
         {
             await CartItemClient.AddCartItemAsync(CartItem);
 
-            var cartItems = await CartItemClient.GetCartItemByUserIdAsync(CartItem.UserId);
+            var cartItems = await CartItemClient.GetCartItemByUserIdAsync();
             CartService.UpdateCartCount(cartItems.Sum(c => c.Quantity)); //volam na UpdateCartCount, teda spoustim event a s ním posluchající metody
             NavigationService.NavigateToHome();
 

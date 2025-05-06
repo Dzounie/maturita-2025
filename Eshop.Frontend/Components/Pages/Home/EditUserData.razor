@@ -1,4 +1,4 @@
-@page "/edit-user-data/{UserId:int}"
+@page "/edit-user-data"
 
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -53,16 +53,17 @@
 
 @code {
 
-    [Parameter]
-    public int UserId { get; set; }
+    public int UserId;
     private UpdatedUserRequest updatedUser = new UpdatedUserRequest();
     private string? ErrorMessage;
     private User userDto = new User();
+
     protected override async Task OnInitializedAsync()
     {
+        UserId = await AuthService.GetUserIdAsync();
         try
         {
-            userDto = await UserClient.GetUserByIdAsync(UserId);
+            userDto = await UserClient.GetCurrentUserAsync();
 
             updatedUser.Name = userDto.Name;
             updatedUser.Phone = userDto.Phone;
@@ -81,7 +82,7 @@
     {
         try
         {
-            await UserClient.UpdateUserDataAsync(UserId, updatedUser);
+            await UserClient.UpdateUserDataAsync(updatedUser);
             NavigationManager.NavigateTo("/");
 
         }

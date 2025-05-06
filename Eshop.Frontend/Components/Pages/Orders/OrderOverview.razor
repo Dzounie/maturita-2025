@@ -56,7 +56,7 @@ else
                 UserId = int.Parse(jwtToken.Claims.First(claim => claim.Type == "UserId").Value);
             }
             //Najde latest objednavku podle UserId z tokenu
-            order = await OrderClient.GetLatestOrderByUserIdAsync(UserId);
+            order = await OrderClient.GetLatestOrderByUserIdAsync();
 
         }
         catch (Exception e)
