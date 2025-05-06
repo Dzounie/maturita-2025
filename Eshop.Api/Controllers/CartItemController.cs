@@ -16,6 +16,8 @@ public class CartItemController(EshopContext context) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateCartItemAsync(CartItem cartItem)
     {
+        cartItem.UserId = int.Parse(User.FindFirst("UserId")!.Value);
+
         await context.Carts.AddAsync(cartItem);
         await context.SaveChangesAsync();
         Console.WriteLine($"Přijatá položka objednávky: {cartItem.ProductId}");
@@ -27,16 +29,12 @@ public class CartItemController(EshopContext context) : ControllerBase
     [HttpGet]
     public async Task<IEnumerable<CartItem>> GetCartItemsAsync() //dalo by se zabalit do <ActionResult<IEnumerable<CartItem>>>, ale mně to takhle stačí
     {
-        return await context.Carts.ToListAsync();
-    }
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
 
-    [Authorize]
-    [HttpGet("byUser/{userId}")]
-    public async Task<IEnumerable<CartItem>> GetCartItemsByUserIdAsync(int userId)
-    {
         var cartItems = await context.Carts
-            .Where(x =>x.UserId == userId)
-            .ToListAsync();
+          .Where(x => x.UserId == userId)
+          .ToListAsync();
+
         return cartItems;
     }
 
@@ -44,9 +42,10 @@ public class CartItemController(EshopContext context) : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetCartItemByIdAsync(int id)
     {
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
         var item = await context.Carts.FindAsync(id);
 
-        if (item == null)
+        if (item == null || item.UserId != userId)
         {
             return NotFound("Položka nebyla nalezena.");
         }
@@ -58,9 +57,10 @@ public class CartItemController(EshopContext context) : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteCartItemAsync(int id)
     {
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
         var item = await context.Carts.FindAsync(id);
 
-        if (item == null)
+        if (item == null || item.UserId != userId)
         {
             return NotFound("Položka nebyla nalezena.");
         }
@@ -76,8 +76,10 @@ public class CartItemController(EshopContext context) : ControllerBase
     [HttpPut("update/{cartItemId}")]
     public async Task<IActionResult> UpdateCartItemAsync(int cartItemId, [FromBody] CartItemUpdateRequest request)
     {
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
+
         var cartItem = await context.Carts.FindAsync(cartItemId);
-        if (cartItem == null)
+        if (cartItem == null || cartItem.UserId != userId)
         {
             return NotFound("Položka v košíku nebyla nalezena.");
         }

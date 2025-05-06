@@ -13,14 +13,16 @@ public class OrderController(EshopContext context) : ControllerBase
     private readonly EshopContext context = context;
 
     [Authorize]
-    [HttpPost("create-order/{userId}")]
-    public async Task<IActionResult> CreateOrderAsync(int userId)
+    [HttpPost("create-order")]
+    public async Task<IActionResult> CreateOrderAsync()
     {
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
+
         //Nají položky v košíku
         var cartItems = await context.Carts
             .Where(item => item.UserId == userId)
             .ToListAsync();
-        if (cartItems == null)
+        if (cartItems == null || cartItems.Count == 0)
         {
             return NotFound("Košík je prázdný");
         }
@@ -61,13 +63,15 @@ public class OrderController(EshopContext context) : ControllerBase
         context.Carts.RemoveRange(cartItems);
         await context.SaveChangesAsync();
 
-        return Ok(newOrder);  
+        return Ok(newOrder);
     }
 
     [Authorize]
-    [HttpGet("get-latest-order/{userId}")]
-    public async Task<IActionResult> GetLatestOrdersAsync(int userId)
+    [HttpGet("get-latest-order")]
+    public async Task<IActionResult> GetLatestOrdersAsync()
     {
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
+
         var order = await context.Orders
             .Where(order => order.UserId == userId)
             .Include(order => order.Status) //eager loading
@@ -87,9 +91,11 @@ public class OrderController(EshopContext context) : ControllerBase
 
 
     [Authorize]
-    [HttpGet("get-orders/{userId}")]
-    public async Task<IActionResult> GeOrdersAsync(int userId)
+    [HttpGet("get-orders")]
+    public async Task<IActionResult> GetOrdersAsync()
     {
+        int userId = int.Parse(User.FindFirst("UserId")!.Value);
+
         var order = await context.Orders
             .Where(order => order.UserId == userId)
             .Include(order => order.Status) //eager loading
@@ -135,7 +141,7 @@ public class OrderController(EshopContext context) : ControllerBase
         var userIdFromToken = int.Parse(User.FindFirst("UserId")!.Value);
 
         var order = await context.Orders.FirstOrDefaultAsync(o => o.Id == orderId);
-        if (order == null || order.UserId != userIdFromToken)
+        if (order == null || (order.UserId != userIdFromToken && !User.IsInRole("Admin")))
         {
             return NotFound("Objednávka nebyla nalezena.");
         }
@@ -162,7 +168,7 @@ public class OrderController(EshopContext context) : ControllerBase
         if (order == null)
         {
             return NotFound("Objednávka nebyla nalezena.");
-        } 
+        }
         order.StatusId = request.StatusId;
         await context.SaveChangesAsync();
 
@@ -172,15 +178,6 @@ public class OrderController(EshopContext context) : ControllerBase
     public class UpdateOrderStatusRequest
     {
         public int StatusId { get; set; }
-    }
-
-    private int GetUserIdFromToken()
-    {
-        var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
-        if (userIdClaim == null)
-        throw new Exception("Chybí UserId v JWT tokenu");
-
-        return int.Parse(userIdClaim.Value);
     }
 
 }

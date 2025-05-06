@@ -15,14 +15,14 @@ public class UserController(EshopContext context, IConfiguration configuration) 
     private readonly EshopContext context = context;
     private readonly IConfiguration configuration = configuration;
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<IEnumerable<User>> GetUsersAsync()
     {
         return await context.Users.ToListAsync();
     }
 
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserByIdAsync(int id)
     {
@@ -33,6 +33,20 @@ public class UserController(EshopContext context, IConfiguration configuration) 
         }
         return Ok(user);
     }
+
+    [Authorize]
+    [HttpGet("current-user")]
+    public async Task<IActionResult> GetCurrentUserAsync()
+    {
+        int id = int.Parse(User.FindFirst("UserId")!.Value);
+        var user = await context.Users.FindAsync(id);
+        if (user == null)
+        {
+            return NotFound("Uživatel nebyl nalezen. Pravděpodobně neplatné ID");
+        }
+        return Ok(user);
+    }
+
 
     //REGISTER
     [HttpPost]
@@ -140,7 +154,7 @@ public class UserController(EshopContext context, IConfiguration configuration) 
         var audience = jwtSettings["Audience"];
 
         //Posílání změněného tokenu
-        var token = JwtTokenGenerator.GenerateToken(secretKey!, issuer!, audience!, user); 
+        var token = JwtTokenGenerator.GenerateToken(secretKey!, issuer!, audience!, user);
 
         return Ok(token);
     }
@@ -161,7 +175,7 @@ public class UserController(EshopContext context, IConfiguration configuration) 
         public string Psc { get; set; } = string.Empty;
     }
 
-    [Authorize (Roles = "Admin")]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("delete-by-id/{id:int}")]
     public async Task<IActionResult> DeleteUserAsync(int id)
     {
@@ -170,20 +184,11 @@ public class UserController(EshopContext context, IConfiguration configuration) 
         {
             return BadRequest("Uzivatel nebyl nalezen.");
         }
-        
+
         context.Users.Remove(user);
         await context.SaveChangesAsync();
 
         return Ok(new { message = "Uživatel byl odstraněn." });
-    }
-
-    private int GetUserIdFromToken()
-    {
-        var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
-            if (userIdClaim == null)
-        throw new Exception("Chybí UserId v JWT tokenu");
-
-        return int.Parse(userIdClaim.Value);
     }
 
 }
