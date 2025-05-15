@@ -17,12 +17,24 @@ public class CartItemController(EshopContext context) : ControllerBase
     public async Task<IActionResult> CreateCartItemAsync(CartItem cartItem)
     {
         cartItem.UserId = int.Parse(User.FindFirst("UserId")!.Value);
+        var existingItem = await context.Carts
+           .FirstOrDefaultAsync(x => x.UserId == cartItem.UserId &&
+           x.ProductId == cartItem.ProductId &&
+           x.Size == cartItem.Size);
 
-        await context.Carts.AddAsync(cartItem);
-        await context.SaveChangesAsync();
-        Console.WriteLine($"Přijatá položka objednávky: {cartItem.ProductId}");
+        if (existingItem != null)
+        {
+            existingItem.Quantity += cartItem.Quantity;
+            context.Carts.Update(existingItem);
+            context.SaveChangesAsync();
+        }
+        else
+        {
+            context.Carts.Add(cartItem);
+            context.SaveChangesAsync();
+        }
 
-        return Ok("Položka byla přidána.");
+        return Ok("Položka byla úspěšně přidána do košíku.");
     }
 
     [Authorize]
